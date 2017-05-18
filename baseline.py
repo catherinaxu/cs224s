@@ -98,16 +98,24 @@ x = tf.placeholder(tf.float32, [None, max_text_length], name='InputData')
 y = tf.placeholder(tf.float32, [None,1], name='LabelData')
 
 # Set model weights
-W = tf.get_variable("Weights", shape=[max_text_length, 1],
+W1 = tf.get_variable("Weights1", shape=[max_text_length, 100],
            initializer=tf.contrib.layers.xavier_initializer())
 
-b = tf.Variable(tf.zeros([1]), name='Bias')
+b1 = tf.Variable(tf.zeros([100]), name='Bias1')
+
+W2 = tf.get_variable("Weights2", shape=[100, 1],
+           initializer=tf.contrib.layers.xavier_initializer())
+
+b2 = tf.Variable(tf.zeros([1]), name='Bias2')
+
 
 # Construct model and encapsulating all ops into scopes, making
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
-    pred = tf.nn.softmax(tf.matmul(x, W) + b) # Softmax
+    h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
+    pred = tf.nn.softmax(tf.matmul(h, W2) + b2)
+
 with tf.name_scope('Loss'):
     # Minimize error
     cost = tf.losses.mean_squared_error(y, pred)
