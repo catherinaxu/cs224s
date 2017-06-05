@@ -59,7 +59,10 @@ with open("speeddate/speeddateoutcomes.csv") as outcomes:
             #    print("CONTNUE")
                 continue
 
-raw_labels = np.asarray(raw_labels).reshape((len(raw_labels), 1))
+labels = np.zeros((len(raw_labels), 2))
+for i, label in enumerate(raw_labels):
+    labels[i][0] = raw_labels[i]
+    labels[i][1] = 1 - raw_labels[i]
 
 # Build vocabulary
 max_text_length = max([len(x.split(" ")) for x in raw_text])
@@ -70,12 +73,12 @@ x = np.array(list(vocab_processor.fit_transform(raw_text)))
 
 # Randomly shuffle data
 np.random.seed(10)
-shuffle_indices = np.random.permutation(np.arange(len(raw_labels)))  # Array of random numbers from 1 to # of labels.
+shuffle_indices = np.random.permutation(np.arange(len(labels)))  # Array of random numbers from 1 to # of labels.
 x_shuffled = x[shuffle_indices]
-y_shuffled = raw_labels[shuffle_indices]
+y_shuffled = labels[shuffle_indices]
 
-train = 0.7
-test = 0.3
+train = 0.9
+test = 1 - train
 # train x, dev x, test x, train y, dev y, test y
 train_cutoff = int(0.7 * len(x_shuffled))
 test_cutoff = int(len(x_shuffled))
@@ -86,8 +89,8 @@ train_y = y_shuffled[0:train_cutoff]
 test_y = y_shuffled[train_cutoff:test_cutoff]
 
 # Parameters
-learning_rate = 1
-training_epochs = 10
+learning_rate = 0.00001
+training_epochs = 100
 batch_size = 1239
 display_step = 1
 
@@ -95,38 +98,42 @@ display_step = 1
 # mnist data image of shape 28*28=784
 x = tf.placeholder(tf.float32, [None, max_text_length], name='InputData')
 # 0-9 digits recognition => 10 classes
-y = tf.placeholder(tf.float32, [None,1], name='LabelData')
+y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
+
+# check this parameter
+HIDDEN_LAYER_SIZE = 100
 
 # Set model weights
-W1 = tf.get_variable("Weights1", shape=[max_text_length, 100],
+W1 = tf.get_variable("Weights1", shape=[max_text_length, HIDDEN_LAYER_SIZE],
            initializer=tf.contrib.layers.xavier_initializer())
 
-b1 = tf.Variable(tf.zeros([100]), name='Bias1')
+b1 = tf.Variable(tf.zeros([HIDDEN_LAYER_SIZE]), name='Bias1')
 
-W2 = tf.get_variable("Weights2", shape=[100, 1],
+W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
            initializer=tf.contrib.layers.xavier_initializer())
 
-b2 = tf.Variable(tf.zeros([1]), name='Bias2')
+b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 
 
 # Construct model and encapsulating all ops into scopes, making
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
-    h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
-    pred = tf.nn.softmax(tf.matmul(h, W2) + b2)
+    h = tf.nn.relu(tf.matmul(x, W1) + b1) # Softmax
+    pred = tf.nn.relu(tf.matmul(h, W2) + b2)
 
 with tf.name_scope('Loss'):
     # Minimize error
-    cost = tf.losses.mean_squared_error(y, pred)
+    cost = tf.nn.softmax_cross_entropy_with_logits(labels=y, logits=pred)
     cost = tf.reduce_mean(cost)
+
 with tf.name_scope('SGD'):
     # Gradient Descent
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 with tf.name_scope('Accuracy'):
     # Accuracy
-    acc = tf.equal(tf.round(pred), y)
-    acc = tf.reduce_mean(tf.cast(acc, tf.float32))
+    acc = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+    acc = tf.reduce_mean(tf.cast(acc, "float"))
 
 # Initializing the variables
 init = tf.global_variables_initializer()
@@ -151,17 +158,17 @@ with tf.Session() as sess:
         total_batch = int(len(train_x)/batch_size)
         # Loop over all batches
         for i in range(total_batch):
-            c, _,  p, labels, summary = sess.run([cost, optimizer, pred, y, merged_summary_op],
+            c, _,  p, accuracy, labels, summary = sess.run([cost, optimizer, pred, acc, y, merged_summary_op],
                                      feed_dict={x: train_x, y: train_y})
-            print(p)
-            print(labels)
+            # print(labels)
+            # print("(labels, predicted_vals)", zip(labels, p))
             # Write logs at every iteration
             summary_writer.add_summary(summary, epoch * total_batch + i)
             # Compute average loss
             avg_cost += c / total_batch
         # Display logs per epoch step
         if (epoch+1) % display_step == 0:
-            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost))
+            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost), "accuracy=", "{:.9f}".format(accuracy))
 
     print("Optimization Finished!")
 
@@ -170,7 +177,7 @@ with tf.Session() as sess:
     print("Accuracy:", acc.eval({x: test_x, y: test_y}))
 
     print("Run the command line:\n" \
-          "--> tensorboard --logdir=/tmp/tensorflow_logs " \
+          "--> tensorboard --logdir=tensorboard " \
           "\nThen open http://0.0.0.0:6006/ into your web browser")
 
 
