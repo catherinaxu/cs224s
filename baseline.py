@@ -63,7 +63,7 @@ labels = np.zeros((len(raw_labels), 2))
 for i, label in enumerate(raw_labels):
     labels[i][0] = raw_labels[i]
     labels[i][1] = 1 - raw_labels[i]
-
+model = {}
 #got the code to download the glove file in this StackOverflow post: 
 #https://stackoverflow.com/questions/37793118/load-pretrained-glove-vectors-in-python
 print ("Loading Glove Model")
@@ -82,24 +82,22 @@ print ("Done. ",len(model)," words loaded!")
 # x is a matrix where each row contains a vector of integers corresponding to a word.
 #x = np.array(list(vocab_processor.fit_transform(raw_text)))
 
-first = 0
-count = 0
+
 glove_matrix = []
 for line in raw_text:
+    count = 0
+    add = np.zeros((100,))
     for word in line.split(" "):
         glove = model.get(word, None)
         if (glove != None):
             glove = np.asarray(glove)
             count += 1
-            if (first == 0):
-                first = 1
-                add = glove
-            else:
-                add = np.add(add, glove)
+            add = np.add(add, glove)
     average_glove = np.divide(add, count)
     glove_matrix.append(average_glove)
 
 x = np.asarray(glove_matrix)
+print(x)
 
 # Randomly shuffle data
 np.random.seed(10)
@@ -107,7 +105,7 @@ shuffle_indices = np.random.permutation(np.arange(len(labels)))  # Array of rand
 x_shuffled = x[shuffle_indices]
 y_shuffled = labels[shuffle_indices]
 
-train = 0.9
+train = 0.8
 test = 1 - train
 # train x, dev x, test x, train y, dev y, test y
 train_cutoff = int(0.7 * len(x_shuffled))
@@ -123,10 +121,11 @@ learning_rate = 0.00001
 training_epochs = 100
 batch_size = 1239
 display_step = 1
+glove_size = 100
 
 # tf Graph Input
 # mnist data image of shape 28*28=784
-x = tf.placeholder(tf.float32, [None, max_text_length], name='InputData')
+x = tf.placeholder(tf.float32, [None, glove_size], name='InputData')
 # 0-9 digits recognition => 10 classes
 y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 
@@ -134,7 +133,7 @@ y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 HIDDEN_LAYER_SIZE = 100
 
 # Set model weights
-W1 = tf.get_variable("Weights1", shape=[max_text_length, HIDDEN_LAYER_SIZE],
+W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
            initializer=tf.contrib.layers.xavier_initializer())
 
 b1 = tf.Variable(tf.zeros([HIDDEN_LAYER_SIZE]), name='Bias1')
