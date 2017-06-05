@@ -64,12 +64,42 @@ for i, label in enumerate(raw_labels):
     labels[i][0] = raw_labels[i]
     labels[i][1] = 1 - raw_labels[i]
 
+#got the code to download the glove file in this StackOverflow post: 
+#https://stackoverflow.com/questions/37793118/load-pretrained-glove-vectors-in-python
+print ("Loading Glove Model")
+f = open("glove.6B.100d.txt",'r')
+for line in f:
+    splitLine = line.split()
+    word = splitLine[0]
+    embedding = [float(val) for val in splitLine[1:]]
+    model[word] = embedding
+print ("Done. ",len(model)," words loaded!")
+
 # Build vocabulary
-max_text_length = max([len(x.split(" ")) for x in raw_text])
+#max_text_length = max([len(x.split(" ")) for x in raw_text])
 # Function that maps each email to sequences of word ids. Shorter emails will be padded.
-vocab_processor = learn.preprocessing.VocabularyProcessor(max_text_length)
+#vocab_processor = learn.preprocessing.VocabularyProcessor(max_text_length)
 # x is a matrix where each row contains a vector of integers corresponding to a word.
-x = np.array(list(vocab_processor.fit_transform(raw_text)))
+#x = np.array(list(vocab_processor.fit_transform(raw_text)))
+
+first = 0
+count = 0
+glove_matrix = []
+for line in raw_text:
+    for word in line.split(" "):
+        glove = model.get(word, None)
+        if (glove != None):
+            glove = np.asarray(glove)
+            count += 1
+            if (first == 0):
+                first = 1
+                add = glove
+            else:
+                add = np.add(add, glove)
+    average_glove = np.divide(add, count)
+    glove_matrix.append(average_glove)
+
+x = np.asarray(glove_matrix)
 
 # Randomly shuffle data
 np.random.seed(10)
