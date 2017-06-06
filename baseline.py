@@ -8,16 +8,36 @@ Author: Aymeric Damien
 Project: https://github.com/aymericdamien/TensorFlow-Examples/
 '''
 
-from __future__ import print_function
-
 import tensorflow as tf
 import csv
 import os
 import textgrid
 from tensorflow.contrib import learn
 import numpy as np
+import random
+import re
 
-#np.set_printoptions(threshold=np.nan)
+def clean_str(string):
+     """
+     Tokenization/string cleaning for all datasets except for SST.
+     Original taken from https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+     """
+     string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+     string = re.sub(r"\'s", " \'s", string)
+     string = re.sub(r"\'ve", " \'ve", string)
+     string = re.sub(r"n\'t", " n\'t", string)
+     string = re.sub(r"\'re", " \'re", string)
+     string = re.sub(r"\'d", " \'d", string)
+     string = re.sub(r"\'ll", " \'ll", string)
+     string = re.sub(r",", " , ", string)
+     string = re.sub(r"!", " ! ", string)
+     string = re.sub(r"\(", " \( ", string)
+     string = re.sub(r"\)", " \) ", string)
+     string = re.sub(r"\?", " \? ", string)
+     string = re.sub(r"\s{2,}", " ", string)
+     return string.strip().lower()
+
+np.set_printoptions(threshold=np.nan)
 
 #create labels and input features
 raw_text = []
@@ -85,6 +105,7 @@ print ("Done. ",len(model)," words loaded!")
 
 glove_matrix = []
 for line in raw_text:
+    line = clean_str(line)
     count = 0
     add = np.zeros((100,))
     for word in line.split(" "):
@@ -117,7 +138,7 @@ train_y = y_shuffled[0:train_cutoff]
 test_y = y_shuffled[train_cutoff:test_cutoff]
 
 # Parameters
-learning_rate = 0.00001
+learning_rate = 0.05
 training_epochs = 100
 batch_size = 1239
 display_step = 1
@@ -148,8 +169,8 @@ b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
-    h = tf.nn.relu(tf.matmul(x, W1) + b1) # Softmax
-    pred = tf.nn.relu(tf.matmul(h, W2) + b2)
+    h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
+    pred = tf.matmul(h, W2) + b2
 
 with tf.name_scope('Loss'):
     # Minimize error
@@ -197,7 +218,7 @@ with tf.Session() as sess:
             avg_cost += c / total_batch
         # Display logs per epoch step
         if (epoch+1) % display_step == 0:
-            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost), "accuracy=", "{:.9f}".format(accuracy))
+            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost), "train accuracy=", "{:.9f}".format(accuracy))
 
     print("Optimization Finished!")
 
