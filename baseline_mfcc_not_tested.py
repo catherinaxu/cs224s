@@ -16,13 +16,49 @@ import os
 import textgrid
 from tensorflow.contrib import learn
 import numpy as np
+import random
+import re
 
-#np.set_printoptions(threshold=np.nan)
+def read_in_mfcc_features():
+    mfcc_filepath = "mfcc_features.txt"
+    
+    # We will create an array of arrays
+    open_=open(mfcc_filepath,"r")
+    lines=open_.readlines();
+    data_mfcc_features=[];
+    for training_ex_feats in lines:
+        features_with_index = training_ex_feats.strip().split(" ");
+        
+        data_mfcc_features.append( [x.split(":")[1] for x in features_with_index]  )
+        
+    return data_mfcc_features
+
+def clean_str(string):
+     """
+     Tokenization/string cleaning for all datasets except for SST.
+     Original taken from https://github.com/yoonkim/CNN_sentence/blob/master/process_data.py
+     """
+     string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
+     string = re.sub(r"\'s", " \'s", string)
+     string = re.sub(r"\'ve", " \'ve", string)
+     string = re.sub(r"n\'t", " n\'t", string)
+     string = re.sub(r"\'re", " \'re", string)
+     string = re.sub(r"\'d", " \'d", string)
+     string = re.sub(r"\'ll", " \'ll", string)
+     string = re.sub(r",", " , ", string)
+     string = re.sub(r"!", " ! ", string)
+     string = re.sub(r"\(", " \( ", string)
+     string = re.sub(r"\)", " \) ", string)
+     string = re.sub(r"\?", " \? ", string)
+     string = re.sub(r"\s{2,}", " ", string)
+     return string.strip().lower()
+
+np.set_printoptions(threshold=np.nan)
 
 #create labels and input features
 raw_text = []
 raw_labels = []
-with open("speeddate/speeddateoutcomes.csv") as outcomes:
+with open("../speeddate/speeddateoutcomes.csv") as outcomes:
     reader = csv.reader(outcomes, delimiter=',', quotechar='|')
     for row in reader:
         txtgrid_path = 'speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
@@ -87,6 +123,7 @@ mfcc_features = read_in_mfcc_features()
 
 glove_matrix = []
 for i, line in enumerate(raw_text):
+    line = clean_str(line)
     count = 0
     add = np.zeros((100,))
     for word in line.split(" "):
@@ -95,7 +132,6 @@ for i, line in enumerate(raw_text):
             glove = np.asarray(glove)
             count += 1
             add = np.add(add, glove)
-    
     average_glove = np.divide(add, count)
     #glove_matrix.append(average_glove)
     # IF USING MFCC FEATURES:
@@ -103,8 +139,7 @@ for i, line in enumerate(raw_text):
     glove_matrix.append(append_glove)
 
 # IF USING MFCC FEATURES:
-glove_size = 100 + mfcc_features[0]
-
+glove_size = 100 + len(mfcc_features[0])
 x = np.asarray(glove_matrix)
 print(x)
 
@@ -126,14 +161,14 @@ train_y = y_shuffled[0:train_cutoff]
 test_y = y_shuffled[train_cutoff:test_cutoff]
 
 # Parameters
-learning_rate = 0.00001
+learning_rate = 0.05
 training_epochs = 100
 batch_size = 1239
 display_step = 1
 glove_size = 100
 
 # IF USING MFCC FEATURES:
-glove_size = 100 + mfcc_features[0]
+glove_size = 100 + len(mfcc_features[0])
 
 
 # tf Graph Input
@@ -161,8 +196,8 @@ b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
-    h = tf.nn.relu(tf.matmul(x, W1) + b1) # Softmax
-    pred = tf.nn.relu(tf.matmul(h, W2) + b2)
+    h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
+    pred = tf.matmul(h, W2) + b2
 
 with tf.name_scope('Loss'):
     # Minimize error
@@ -210,7 +245,7 @@ with tf.Session() as sess:
             avg_cost += c / total_batch
         # Display logs per epoch step
         if (epoch+1) % display_step == 0:
-            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost), "accuracy=", "{:.9f}".format(accuracy))
+            print("Epoch:", '%04d' % (epoch+1)) #, "cost=", "{:.9f}".format(avg_cost), "accuracy=", "{:.9f}".format(accuracy))
 
     print("Optimization Finished!")
 
@@ -224,19 +259,6 @@ with tf.Session() as sess:
 
 
 
-def read_in_mfcc_features():
-    mfcc_filepath = "mfcc_features.txt"
-    
-    # We will create an array of arrays
-    open_=open(mfcc_filepath,"r")
-    lines=open_.readlines();
-    data_mfcc_features=[];
-    for training_ex_feats in lines:
-        features_with_index_ = training_ex_feats.strip().split(" ");
-        
-        data_mfcc_features.append( [x.split(":")[1] for x in features_with_index]  )
-        
-    return data_mfcc_features
 
 
  
