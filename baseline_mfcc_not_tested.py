@@ -59,9 +59,10 @@ np.set_printoptions(threshold=np.nan)
 raw_text = []
 raw_labels = []
 with open("../speeddate/speeddateoutcomes.csv") as outcomes:
+    print("opened_reader")
     reader = csv.reader(outcomes, delimiter=',', quotechar='|')
     for row in reader:
-        txtgrid_path = 'speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
+        txtgrid_path = '../speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
         if os.path.isfile(txtgrid_path):
             if row[10] == '.' or row[14] == '.' or row[14] == '. ' or row[10] == '. ':
                 continue
@@ -92,7 +93,7 @@ with open("../speeddate/speeddateoutcomes.csv") as outcomes:
 
                 raw_labels.append(label)
             except:
-            #    print("CONTNUE")
+                print("CONTNUE")
                 continue
 
 labels = np.zeros((len(raw_labels), 2))
@@ -121,6 +122,8 @@ print ("Done. ",len(model)," words loaded!")
 # This is a matrix, can comment out
 mfcc_features = read_in_mfcc_features()
 
+print("raw text len: " + str(len(raw_text)))
+
 glove_matrix = []
 for i, line in enumerate(raw_text):
     line = clean_str(line)
@@ -135,13 +138,18 @@ for i, line in enumerate(raw_text):
     average_glove = np.divide(add, count)
     #glove_matrix.append(average_glove)
     # IF USING MFCC FEATURES:
-    append_glove = np.append(average_glove, mfcc_features[i])
+    append_glove = np.append(average_glove, np.asarray(mfcc_features[i]))
+    print("-----APPEND GLOVE-----")
+    print(append_glove)
+    print(append_glove.shape)
+    print(append_glove.dtype)
     glove_matrix.append(append_glove)
 
 # IF USING MFCC FEATURES:
 glove_size = 100 + len(mfcc_features[0])
+#TODO - FIGURE OUT WHY THIS IS EMPTY
 x = np.asarray(glove_matrix)
-print(x)
+print(x.shape)
 
 # Randomly shuffle data
 np.random.seed(10)
@@ -229,12 +237,26 @@ with tf.Session() as sess:
     # op to write logs to Tensorboard
     summary_writer = tf.summary.FileWriter("tensorboard/", graph=tf.get_default_graph())
 
+    train_x = np.asarray(train_x)
+    print ("-------TRAIN_X-------")
+    #print(train_x)
+    print(train_x.dtype)
+    print(train_x.shape)
+    
+    print ("-------TRAIN_X INSANCE-------")
+
+    print(train_x[0])
+    print(train_x[0].dtype)
+    print(train_x[0].shape)
+    train_y = np.asarray(train_y)
     # Training cycle
     for epoch in range(training_epochs):
         avg_cost = 0.
         total_batch = int(len(train_x)/batch_size)
         # Loop over all batches
         for i in range(total_batch):
+            print("len(train_x)=" + str(len(train_x)))
+            print("len(train_y)=" + str(len(train_y)))
             c, _,  p, accuracy, labels, summary = sess.run([cost, optimizer, pred, acc, y, merged_summary_op],
                                      feed_dict={x: train_x, y: train_y})
             # print(labels)
@@ -251,6 +273,8 @@ with tf.Session() as sess:
 
     # Test model
     # Calculate accuracy
+    print("len(test_x)=" + str(len(test_x)))
+    print("len(test_y)=" + str(len(test_y)))
     print("Accuracy:", acc.eval({x: test_x, y: test_y}))
 
     print("Run the command line:\n" \
