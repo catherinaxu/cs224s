@@ -208,7 +208,6 @@ test_x = x_shuffled[train_cutoff:test_cutoff]
 train_y = y_shuffled[0:train_cutoff]
 test_y = y_shuffled[train_cutoff:test_cutoff]
 
-
 # Parameters
 learning_rate = 1e-3
 training_epochs = 100
@@ -224,7 +223,7 @@ y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 
 # check this parameter
 HIDDEN_LAYER_SIZE_1 = 50
-#HIDDEN_LAYER_SIZE_2 = 16
+HIDDEN_LAYER_SIZE_2 = 16
 
 # Set model weights
 #W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
@@ -238,25 +237,25 @@ b1 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1]), name='b1')
 #W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
 #           initializer=tf.contrib.layers.xavier_initializer())
 
-W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, 2]), name='W2')
+W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, HIDDEN_LAYER_SIZE_2]), name='W2')
 
 #b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 
-b2 = tf.Variable(tf.random_normal([2]), name='b2')
+b2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2]), name='b2')
 
-#W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
+W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
 
-#b3 = tf.Variable(tf.random_normal([2]), name='b3')
+b3 = tf.Variable(tf.random_normal([2]), name='b3')
 
 # Construct model and encapsulating all ops into scopes, making
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
     h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
-    #h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
-    #pred = tf.matmul(h2, W3) + b3
+    h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
+    pred = tf.matmul(h2, W3) + b3
 
-    pred = tf.matmul(h, W2) + b2
+    #pred = tf.matmul(h, W2) + b2
 
 with tf.name_scope('Loss'):
     # Minimize error

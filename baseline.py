@@ -17,6 +17,40 @@ import numpy as np
 import random
 import re
 
+def make_mfcc_map():
+    mfcc_files_filepath = "mfcc_features_filenames.txt"
+
+    open_=open(mfcc_files_filepath,"r")
+    lines=open_.readlines();
+
+    # maps filename -> index in mfcc_features
+    mfcc_map={};
+
+    for i, filename in enumerate(lines):
+        filename_itself = filename.strip(".wav\n")
+
+        mfcc_map[filename_itself] = i
+
+    return mfcc_map
+
+
+def read_in_mfcc_features():
+    mfcc_filepath = "mfcc_features.txt"
+    # We will create an array of arrays
+    open_=open(mfcc_filepath,"r")
+    lines=open_.readlines()
+    data_mfcc_features=[]
+    ctr = 0
+    for training_ex_feats in lines:
+        features_with_index = training_ex_feats.strip().split(" ")
+
+        data_mfcc_features.append( [float(x.split(":")[1]) for x in features_with_index]  )
+
+        arr = [float(x.split(":")[1]) for x in features_with_index]
+        if(len(arr ) != 26):
+            ctr += 1
+    return data_mfcc_features
+
 def clean_str(string):
      """
      Tokenization/string cleaning for all datasets except for SST.
@@ -157,7 +191,7 @@ y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 
 # check this parameter
 HIDDEN_LAYER_SIZE_1 = 50
-HIDDEN_LAYER_SIZE_2 = 16
+#HIDDEN_LAYER_SIZE_2 = 16
 
 # Set model weights
 #W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
@@ -171,15 +205,15 @@ b1 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1]), name='b1')
 #W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
 #           initializer=tf.contrib.layers.xavier_initializer())
 
-W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, HIDDEN_LAYER_SIZE_2]), name='W2')
+W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, 2]), name='W2')
 
 #b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 
-b2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2]), name='b2')
+b2 = tf.Variable(tf.random_normal([2]), name='b2')
 
-W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
+#W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
 
-b3 = tf.Variable(tf.random_normal([2]), name='b3')
+#b3 = tf.Variable(tf.random_normal([2]), name='b3')
 
 
 # Construct model and encapsulating all ops into scopes, making
@@ -187,8 +221,10 @@ b3 = tf.Variable(tf.random_normal([2]), name='b3')
 with tf.name_scope('Model'):
     # Model
     h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
-    h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
-    pred = tf.matmul(h2, W3) + b3
+    #h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
+    #pred = tf.matmul(h2, W3) + b3
+
+    pred = tf.matmul(h, W2) + b2
 
 with tf.name_scope('Loss'):
     # Minimize error
