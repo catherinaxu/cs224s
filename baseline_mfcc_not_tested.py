@@ -58,7 +58,7 @@ np.set_printoptions(threshold=np.nan)
 #create labels and input features
 raw_text = []
 raw_labels = []
-with open("../speeddate/speeddateoutcomes.csv") as outcomes:
+with open("speeddate/speeddateoutcomes.csv") as outcomes:
     reader = csv.reader(outcomes, delimiter=',', quotechar='|')
     for row in reader:
         txtgrid_path = 'speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
