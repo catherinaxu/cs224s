@@ -146,11 +146,10 @@ with open("../speeddate/speeddateoutcomes.csv") as outcomes:
                     raw_text.append(data_str)
 
                 raw_labels.append(label)
-                #raw_mfcc.append( mfcc_features[mfcc_file_to_index[possible_filename]]  )
-                #raw_mfcc.append( mfcc_features[mfcc_map[possible_filename]]  )
             except:
                 print("CONTNUE")
                 continue
+            '''
             if mfcc_file_to_index.get(possible_filename) == None:
                 if mfcc_file_to_index.get(other_possible_filename) != None: 
                     other_index = mfcc_file_to_index[other_possible_filename]
@@ -158,7 +157,7 @@ with open("../speeddate/speeddateoutcomes.csv") as outcomes:
                 else:
                     print("CONTNUE-2")
                     continue
-
+            '''
 
 labels = np.zeros((len(raw_labels), 2))
 for i, label in enumerate(raw_labels):
@@ -233,7 +232,7 @@ learning_rate = 1e-3
 training_epochs = 100
 batch_size = 1239
 display_step = 1
-glove_size = 100
+glove_size = 126
 
 # IF USING MFCC FEATURES:
 #glove_size = 100 + len(mfcc_features[0])
