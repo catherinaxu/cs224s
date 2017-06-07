@@ -8,6 +8,8 @@ Author: Aymeric Damien
 Project: https://github.com/aymericdamien/TensorFlow-Examples/
 '''
 
+from __future__ import print_function
+
 import tensorflow as tf
 import csv
 import os
@@ -16,6 +18,20 @@ from tensorflow.contrib import learn
 import numpy as np
 import random
 import re
+
+def read_in_mfcc_features():
+    mfcc_filepath = "mfcc_features.txt"
+    
+    # We will create an array of arrays
+    open_=open(mfcc_filepath,"r")
+    lines=open_.readlines();
+    data_mfcc_features=[];
+    for training_ex_feats in lines:
+        features_with_index = training_ex_feats.strip().split(" ");
+        
+        data_mfcc_features.append( [x.split(":")[1] for x in features_with_index]  )
+        
+    return data_mfcc_features
 
 def clean_str(string):
      """
@@ -42,7 +58,7 @@ np.set_printoptions(threshold=np.nan)
 #create labels and input features
 raw_text = []
 raw_labels = []
-with open("speeddate/speeddateoutcomes.csv") as outcomes:
+with open("../speeddate/speeddateoutcomes.csv") as outcomes:
     reader = csv.reader(outcomes, delimiter=',', quotechar='|')
     for row in reader:
         txtgrid_path = 'speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
@@ -102,9 +118,11 @@ print ("Done. ",len(model)," words loaded!")
 # x is a matrix where each row contains a vector of integers corresponding to a word.
 #x = np.array(list(vocab_processor.fit_transform(raw_text)))
 
+# This is a matrix, can comment out
+mfcc_features = read_in_mfcc_features()
 
 glove_matrix = []
-for line in raw_text:
+for i, line in enumerate(raw_text):
     line = clean_str(line)
     count = 0
     add = np.zeros((100,))
@@ -115,8 +133,13 @@ for line in raw_text:
             count += 1
             add = np.add(add, glove)
     average_glove = np.divide(add, count)
-    glove_matrix.append(average_glove)
+    #glove_matrix.append(average_glove)
+    # IF USING MFCC FEATURES:
+    append_glove = np.append(average_glove, mfcc_features[i])
+    glove_matrix.append(append_glove)
 
+# IF USING MFCC FEATURES:
+glove_size = 100 + len(mfcc_features[0])
 x = np.asarray(glove_matrix)
 print(x)
 
@@ -143,6 +166,10 @@ training_epochs = 100
 batch_size = 1239
 display_step = 1
 glove_size = 100
+
+# IF USING MFCC FEATURES:
+glove_size = 100 + len(mfcc_features[0])
+
 
 # tf Graph Input
 # mnist data image of shape 28*28=784
@@ -218,7 +245,7 @@ with tf.Session() as sess:
             avg_cost += c / total_batch
         # Display logs per epoch step
         if (epoch+1) % display_step == 0:
-            print("Epoch:", '%04d' % (epoch+1), "cost=", "{:.9f}".format(avg_cost), "train accuracy=", "{:.9f}".format(accuracy))
+            print("Epoch:", '%04d' % (epoch+1)) #, "cost=", "{:.9f}".format(avg_cost), "accuracy=", "{:.9f}".format(accuracy))
 
     print("Optimization Finished!")
 
@@ -231,3 +258,27 @@ with tf.Session() as sess:
           "\nThen open http://0.0.0.0:6006/ into your web browser")
 
 
+
+
+
+ 
+
+# EXTRA CODE: labels by person
+# labels = []
+# for i in range(101, 338):
+#     sum_so_far = 0
+#     count_so_far = 0
+#     for j in range(0, len(raw_labels)):
+#         if raw_labels[j][0] == i:
+#             count_so_far += 2
+#             sum_so_far += raw_labels[j][1]
+#             sum_so_far += raw_labels[j][2]
+#     if count_so_far > 0:
+#         avg_rating = float(sum_so_far) / float(count_so_far)
+#         if avg_rating >= 5:
+#             label = 1
+#         else:
+#             label = 0
+#         labels.append((i, label))
+#     else:
+#         continue
