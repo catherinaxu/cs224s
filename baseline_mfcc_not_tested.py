@@ -138,12 +138,17 @@ for i, line in enumerate(raw_text):
     average_glove = np.divide(add, count)
     #glove_matrix.append(average_glove)
     # IF USING MFCC FEATURES:
-    append_glove = np.append(average_glove, np.asarray(mfcc_features[i]))
-    print("-----APPEND GLOVE-----")
-    print(append_glove)
-    print(append_glove.shape)
-    print(append_glove.dtype)
+    #append_glove = np.append(average_glove, np.asarray(mfcc_features[i]))
+    append_glove = np.append(average_glove, mfcc_features[i])
+    #print(append_glove)
+    #print(append_glove.shape)
+    #print(append_glove.dtype)
+    #if len(append_glove) == 126:
     glove_matrix.append(append_glove)
+
+glove_matrix.pop(0)
+labels = np.delete(labels, 0, axis=0)
+
 
 # IF USING MFCC FEATURES:
 glove_size = 100 + len(mfcc_features[0])
@@ -237,26 +242,29 @@ with tf.Session() as sess:
     # op to write logs to Tensorboard
     summary_writer = tf.summary.FileWriter("tensorboard/", graph=tf.get_default_graph())
 
+    
+
     train_x = np.asarray(train_x)
-    print ("-------TRAIN_X-------")
+   # print ("-------TRAIN_X-------")
     #print(train_x)
     print(train_x.dtype)
-    print(train_x.shape)
+    #print(train_x.shape)
     
-    print ("-------TRAIN_X INSANCE-------")
-
-    print(train_x[0])
-    print(train_x[0].dtype)
-    print(train_x[0].shape)
     train_y = np.asarray(train_y)
+    print ("-------TEST_X INSANCE-------")
+
+    #print(train_x[0])
+    print(test_x[0].dtype)
+    print(test_x[0].shape)
+    
     # Training cycle
     for epoch in range(training_epochs):
         avg_cost = 0.
         total_batch = int(len(train_x)/batch_size)
         # Loop over all batches
         for i in range(total_batch):
-            print("len(train_x)=" + str(len(train_x)))
             print("len(train_y)=" + str(len(train_y)))
+            print("len(train_y[0])=" + str(len(train_y[0])))
             c, _,  p, accuracy, labels, summary = sess.run([cost, optimizer, pred, acc, y, merged_summary_op],
                                      feed_dict={x: train_x, y: train_y})
             # print(labels)
@@ -273,8 +281,22 @@ with tf.Session() as sess:
 
     # Test model
     # Calculate accuracy
-    print("len(test_x)=" + str(len(test_x)))
-    print("len(test_y)=" + str(len(test_y)))
+    
+    not_126 = [i for i, feat in enumerate(test_x) if len(feat) != 126]
+    actually_126 = [i for i, feat in enumerate(test_x) if len(feat) == 126]
+    lens = [len(i) for i in test_x]
+
+    print("----NOT 126----")
+    print(not_126)
+    print("----ACTUALLY 126----")
+    print(len(actually_126))
+    print("----ACTUALY LENS---v-")
+    print(lens)
+
+    print("shape")
+    print(test_x.shape)
+    print(test_y.shape)
+
     print("Accuracy:", acc.eval({x: test_x, y: test_y}))
 
     print("Run the command line:\n" \
