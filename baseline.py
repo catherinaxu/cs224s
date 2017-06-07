@@ -210,22 +210,3 @@ with tf.Session() as sess:
           "\nThen open http://0.0.0.0:6006/ into your web browser")
 
 
-# EXTRA CODE: labels by person
-# labels = []
-# for i in range(101, 338):
-#     sum_so_far = 0
-#     count_so_far = 0
-#     for j in range(0, len(raw_labels)):
-#         if raw_labels[j][0] == i:
-#             count_so_far += 2
-#             sum_so_far += raw_labels[j][1]
-#             sum_so_far += raw_labels[j][2]
-#     if count_so_far > 0:
-#         avg_rating = float(sum_so_far) / float(count_so_far)
-#         if avg_rating >= 5:
-#             label = 1
-#         else:
-#             label = 0
-#         labels.append((i, label))
-#     else:
-#         continue
