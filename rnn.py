@@ -11,7 +11,7 @@ import sys
 import math
 import re
 
-#np.set_printoptions(threshold=np.nan)
+np.set_printoptions(threshold=np.nan)
 
 #create labels and input features
 raw_text = []
@@ -95,6 +95,7 @@ def clean_str(string):
      string = re.sub(r"\s{2,}", " ", string)
      return string.strip().lower()
 
+stoplist = ["to", "as", "a", "the", "there", "from", "here", "an"]
 glove_matrix = []
 min = sys.maxint
 for line in raw_text:
@@ -108,7 +109,7 @@ for line in raw_text:
     for i, word in enumerate(line):
         if i == 50: break
         glove = model.get(word, None)
-        if (glove != None):
+        if (glove != None and word not in stoplist):
             glove = np.asarray(glove)
             count += 1
             add = np.add(add, glove)
@@ -141,6 +142,7 @@ test_x = x[train_cutoff:test_cutoff]
 train_y = labels[0:y_train_cutoff]
 test_y = labels[y_train_cutoff:y_test_cutoff]
 
+
 '''
 To classify images using a recurrent neural network, we consider every image
 row as a sequence of pixels. Because MNIST image shape is 28*28px, we will then
@@ -148,7 +150,7 @@ handle 28 sequences of 28 steps for every sample.
 '''
 
 # Parameters
-learning_rate = 0.1
+learning_rate = 1e-3
 training_iters = 100
 batch_size = 1239
 display_step = 1
@@ -156,7 +158,7 @@ display_step = 1
 # Network Parameters
 n_input = 100
 n_steps = 5 # timesteps
-n_hidden = 100 # hidden layer num of features
+n_hidden = 50 # hidden layer num of features
 n_classes = 2
 
 # tf Graph input
@@ -202,10 +204,20 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 # Initializing the variables
 init = tf.global_variables_initializer()
 
+# Create a summary to monitor cost tensor
+tf.summary.scalar("loss", cost)
+# Create a summary to monitor accuracy tensor
+tf.summary.scalar("accuracy", accuracy)
+# Merge all summaries into a single op
+merged_summary_op = tf.summary.merge_all()
+
 # Launch the graph
 with tf.Session() as sess:
     sess.run(init)
     step = 0
+
+    # op to write logs to Tensorboard
+    summary_writer = tf.summary.FileWriter("tensorboard/", graph=tf.get_default_graph())
     # Keep training until reach max iterations
 
     while step < training_iters:
@@ -216,13 +228,15 @@ with tf.Session() as sess:
         sess.run(optimizer, feed_dict={x: batch_x, y: batch_y})
         if step % display_step == 0:
             # Calculate batch accuracy
-            acc, predicted = sess.run([accuracy, pred], feed_dict={x: batch_x, y: batch_y})
+            acc, predicted, summary = sess.run([accuracy, pred, merged_summary_op], feed_dict={x: batch_x, y: batch_y})
 
+            summary_writer.add_summary(summary, step)
             # Calculate batch loss
             loss = sess.run(cost, feed_dict={x: batch_x, y: batch_y})
             print("Iter " + str(step) + ", Minibatch Loss= " + \
                   "{:.6f}".format(loss) + ", Training Accuracy= " + \
                   "{:.5f}".format(acc))
+
         step += 1
     print("Optimization Finished!")
 
