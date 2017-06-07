@@ -102,6 +102,7 @@ print ("Done. ",len(model)," words loaded!")
 # x is a matrix where each row contains a vector of integers corresponding to a word.
 #x = np.array(list(vocab_processor.fit_transform(raw_text)))
 
+stoplist = ["to", "as", "a", "the", "there", "from", "here", "an"]
 
 glove_matrix = []
 for line in raw_text:
@@ -110,7 +111,7 @@ for line in raw_text:
     add = np.zeros((100,))
     for word in line.split(" "):
         glove = model.get(word, None)
-        if (glove != None):
+        if (glove != None) and word not in stoplist:
             glove = np.asarray(glove)
             count += 1
             add = np.add(add, glove)
@@ -118,15 +119,19 @@ for line in raw_text:
     glove_matrix.append(average_glove)
 
 x = np.asarray(glove_matrix)
-print(x)
+print x[0]
+print x[1]
+print x[2]
+print x[50]
+print x[x.shape[0] - 1]
 
 # Randomly shuffle data
 np.random.seed(10)
 shuffle_indices = np.random.permutation(np.arange(len(labels)))  # Array of random numbers from 1 to # of labels.
-x_shuffled = x[shuffle_indices]
-y_shuffled = labels[shuffle_indices]
+x_shuffled = x #[shuffle_indices]
+y_shuffled = labels #[shuffle_indices]
 
-train = 0.8
+train = 0.7
 test = 1 - train
 # train x, dev x, test x, train y, dev y, test y
 train_cutoff = int(0.7 * len(x_shuffled))
@@ -138,7 +143,7 @@ train_y = y_shuffled[0:train_cutoff]
 test_y = y_shuffled[train_cutoff:test_cutoff]
 
 # Parameters
-learning_rate = 0.05
+learning_rate = 1e-3
 training_epochs = 100
 batch_size = 1239
 display_step = 1
@@ -151,18 +156,30 @@ x = tf.placeholder(tf.float32, [None, glove_size], name='InputData')
 y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 
 # check this parameter
-HIDDEN_LAYER_SIZE = 100
+HIDDEN_LAYER_SIZE_1 = 50
+HIDDEN_LAYER_SIZE_2 = 16
 
 # Set model weights
-W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
-           initializer=tf.contrib.layers.xavier_initializer())
+#W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
+#           initializer=tf.contrib.layers.xavier_initializer())
+W1 = tf.Variable(tf.random_normal([glove_size, HIDDEN_LAYER_SIZE_1]), name='W1')
 
-b1 = tf.Variable(tf.zeros([HIDDEN_LAYER_SIZE]), name='Bias1')
+#b1 = tf.Variable(tf.zeros([HIDDEN_LAYER_SIZE]), name='Bias1')
 
-W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
-           initializer=tf.contrib.layers.xavier_initializer())
+b1 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1]), name='b1')
 
-b2 = tf.Variable(tf.zeros([2]), name='Bias2')
+#W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
+#           initializer=tf.contrib.layers.xavier_initializer())
+
+W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, HIDDEN_LAYER_SIZE_2]), name='W2')
+
+#b2 = tf.Variable(tf.zeros([2]), name='Bias2')
+
+b2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2]), name='b2')
+
+W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
+
+b3 = tf.Variable(tf.random_normal([2]), name='b3')
 
 
 # Construct model and encapsulating all ops into scopes, making
@@ -170,7 +187,8 @@ b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 with tf.name_scope('Model'):
     # Model
     h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
-    pred = tf.matmul(h, W2) + b2
+    h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
+    pred = tf.matmul(h2, W3) + b3
 
 with tf.name_scope('Loss'):
     # Minimize error
@@ -210,9 +228,9 @@ with tf.Session() as sess:
         for i in range(total_batch):
             c, _,  p, accuracy, labels, summary = sess.run([cost, optimizer, pred, acc, y, merged_summary_op],
                                      feed_dict={x: train_x, y: train_y})
-            # print(labels)
             # print("(labels, predicted_vals)", zip(labels, p))
             # Write logs at every iteration
+            print p
             summary_writer.add_summary(summary, epoch * total_batch + i)
             # Compute average loss
             avg_cost += c / total_batch
