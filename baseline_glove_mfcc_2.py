@@ -1,3 +1,4 @@
+__author__ = 'catherinaxu'
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 '''
@@ -16,15 +17,16 @@ from tensorflow.contrib import learn
 import numpy as np
 import random
 import re
+from sklearn.preprocessing import MinMaxScaler
 
 def make_mfcc_map():
     mfcc_files_filepath = "mfcc_features_filenames.txt"
 
     open_=open(mfcc_files_filepath,"r")
-    lines=open_.readlines();
+    lines=open_.readlines()
 
     # maps filename -> index in mfcc_features
-    mfcc_map={};
+    mfcc_map={}
 
     for i, filename in enumerate(lines):
         filename_itself = filename.strip(".wav\n")
@@ -32,7 +34,6 @@ def make_mfcc_map():
         mfcc_map[filename_itself] = i
 
     return mfcc_map
-
 
 def read_in_mfcc_features():
     mfcc_filepath = "mfcc_features.txt"
@@ -73,15 +74,24 @@ def clean_str(string):
 
 np.set_printoptions(threshold=np.nan)
 
+mfcc_features = read_in_mfcc_features()
+mfcc_file_to_index = make_mfcc_map()
+
+mfcc_features = MinMaxScaler(feature_range=(0,2)).fit_transform(mfcc_features)
+
 #create labels and input features
 raw_text = []
 raw_labels = []
+raw_mfcc = []
+abandon = ["232_219", "219_232", "232_220", "220_232"]
 with open("speeddate/speeddateoutcomes.csv") as outcomes:
     reader = csv.reader(outcomes, delimiter=',', quotechar='|')
     for row in reader:
+        possible_filename = str(row[0]) + "_" + str(row[1])
+        other_possible_filename = str(row[1]) + "_" + str(row[0])
         txtgrid_path = 'speeddate/' + row[0] + '-' + row[1] + '.TextGrid'
         if os.path.isfile(txtgrid_path):
-            if row[10] == '.' or row[14] == '.' or row[14] == '. ' or row[10] == '. ':
+            if row[10] == '.' or row[14] == '.' or row[14] == '. ' or row[10] == '. ' or possible_filename in abandon:
                 continue
             if (float(row[10]) + float(row[14]))/ 2 >= 5:
                 label = 1
@@ -93,32 +103,51 @@ with open("speeddate/speeddateoutcomes.csv") as outcomes:
                 female_int_tier = txtgrid.pop()
                 male_int_tier = txtgrid.pop()
 
-                # if min time for first interval for female is smaller, they are the first number
+               # if min time for first interval for female is smaller, they are the first number
                 if female_int_tier.indexContaining(0) != None:
                     # ADD THEM
                     data_str = ""
                     for int_tier in female_int_tier:
                         data_str += (int_tier.mark)
 
+                    if mfcc_file_to_index.get(possible_filename) == None:
+                        if mfcc_file_to_index.get(other_possible_filename) != None:
+                            other_index = mfcc_file_to_index[other_possible_filename]
+                            raw_mfcc.append( mfcc_features[ other_index ]  )
+                    else:
+                        raw_mfcc.append( mfcc_features[mfcc_file_to_index[possible_filename]]  )
                     raw_text.append(data_str)
                 elif male_int_tier.indexContaining(0) != None:
                     # ADD THEM
                     data_str = ""
                     for int_tier in male_int_tier:
                         data_str += (int_tier.mark) + " "
+                    if mfcc_file_to_index.get(possible_filename) == None:
+                        if mfcc_file_to_index.get(other_possible_filename) != None:
+                            other_index = mfcc_file_to_index[other_possible_filename]
+                            raw_mfcc.append( mfcc_features[ other_index ]  )
+                    else:
+                        raw_mfcc.append( mfcc_features[mfcc_file_to_index[possible_filename]]  )
                     raw_text.append(data_str)
 
                 raw_labels.append(label)
             except:
-            #    print("CONTNUE")
+                print("CONTNUE")
                 continue
+            if mfcc_file_to_index.get(possible_filename) == None:
+                if mfcc_file_to_index.get(other_possible_filename) != None:
+                    other_index = mfcc_file_to_index[other_possible_filename]
+                    raw_mfcc.append( mfcc_features[ other_index ]  )
+                else:
+                    print("CONTNUE-2")
+                    continue
 
 labels = np.zeros((len(raw_labels), 2))
 for i, label in enumerate(raw_labels):
     labels[i][0] = raw_labels[i]
     labels[i][1] = 1 - raw_labels[i]
 model = {}
-#got the code to download the glove file in this StackOverflow post: 
+#got the code to download the glove file in this StackOverflow post:
 #https://stackoverflow.com/questions/37793118/load-pretrained-glove-vectors-in-python
 print ("Loading Glove Model")
 f = open("glove.6B.100d.txt",'r')
@@ -139,7 +168,7 @@ print ("Done. ",len(model)," words loaded!")
 stoplist = ["to", "as", "a", "the", "there", "from", "here", "an"]
 
 glove_matrix = []
-for line in raw_text:
+for i, line in enumerate(raw_text):
     line = clean_str(line)
     count = 0
     add = np.zeros((100,))
@@ -150,20 +179,23 @@ for line in raw_text:
             count += 1
             add = np.add(add, glove)
     average_glove = np.divide(add, count)
-    glove_matrix.append(average_glove)
+    append_glove = np.append(average_glove, raw_mfcc[i])
+    #append_glove = average_glove
+    glove_matrix.append(append_glove)
 
+#glove_matrix.pop(0)
+#labels = np.delete(labels, 0, axis=0)
+
+
+# IF USING MFCC FEATURES:
 x = np.asarray(glove_matrix)
-print x[0]
-print x[1]
-print x[2]
-print x[50]
-print x[x.shape[0] - 1]
+#x = np.asarray(raw_mfcc)
 
 # Randomly shuffle data
 np.random.seed(10)
 shuffle_indices = np.random.permutation(np.arange(len(labels)))  # Array of random numbers from 1 to # of labels.
-x_shuffled = x #[shuffle_indices]
-y_shuffled = labels #[shuffle_indices]
+x_shuffled = x[shuffle_indices]
+y_shuffled = labels[shuffle_indices]
 
 train = 0.7
 test = 1 - train
@@ -179,9 +211,9 @@ test_y = y_shuffled[train_cutoff:test_cutoff]
 # Parameters
 learning_rate = 1e-3
 training_epochs = 100
-batch_size = 1239
+batch_size = 1236
 display_step = 1
-glove_size = 100
+glove_size = 126
 
 # tf Graph Input
 # mnist data image of shape 28*28=784
@@ -191,7 +223,7 @@ y = tf.placeholder(tf.float32, [None, 2], name='LabelData')
 
 # check this parameter
 HIDDEN_LAYER_SIZE_1 = 50
-#HIDDEN_LAYER_SIZE_2 = 16
+HIDDEN_LAYER_SIZE_2 = 16
 
 # Set model weights
 #W1 = tf.get_variable("Weights1", shape=[glove_size, HIDDEN_LAYER_SIZE],
@@ -205,26 +237,25 @@ b1 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1]), name='b1')
 #W2 = tf.get_variable("Weights2", shape=[HIDDEN_LAYER_SIZE, 2],
 #           initializer=tf.contrib.layers.xavier_initializer())
 
-W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, 2]), name='W2')
+W2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_1, HIDDEN_LAYER_SIZE_2]), name='W2')
 
 #b2 = tf.Variable(tf.zeros([2]), name='Bias2')
 
-b2 = tf.Variable(tf.random_normal([2]), name='b2')
+b2 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2]), name='b2')
 
-#W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
+W3 = tf.Variable(tf.random_normal([HIDDEN_LAYER_SIZE_2, 2]), name='W3')
 
-#b3 = tf.Variable(tf.random_normal([2]), name='b3')
-
+b3 = tf.Variable(tf.random_normal([2]), name='b3')
 
 # Construct model and encapsulating all ops into scopes, making
 # Tensorboard's Graph visualization more convenient
 with tf.name_scope('Model'):
     # Model
     h = tf.nn.tanh(tf.matmul(x, W1) + b1) # Softmax
-    #h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
-    #pred = tf.matmul(h2, W3) + b3
+    h2 = tf.nn.tanh(tf.matmul(h, W2) + b2)
+    pred = tf.matmul(h2, W3) + b3
 
-    pred = tf.matmul(h, W2) + b2
+    #pred = tf.matmul(h, W2) + b2
 
 with tf.name_scope('Loss'):
     # Minimize error
@@ -266,7 +297,7 @@ with tf.Session() as sess:
                                      feed_dict={x: train_x, y: train_y})
             # print("(labels, predicted_vals)", zip(labels, p))
             # Write logs at every iteration
-            print p
+            #print p
             summary_writer.add_summary(summary, epoch * total_batch + i)
             # Compute average loss
             avg_cost += c / total_batch
