@@ -1,3 +1,4 @@
+#taken from Denny Britz's implementation of Text CNN: https://github.com/dennybritz/cnn-text-classification-tf
 import tensorflow as tf
 import argparse
 import numpy as np
